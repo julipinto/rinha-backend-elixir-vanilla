@@ -57,4 +57,17 @@ defmodule RinhaVanilla.Pipelines.Producer do
   defp schedule_poll(interval_ms) do
     Process.send_after(self(), :poll, interval_ms)
   end
+
+  defp choose_fetch_strategy() do
+  case RinhaVanilla.Health.Cache.get_status() do
+      {:ok, %{"default" => ds, "fallback" => fs}} ->
+        default_ok = Map.get(ds, "status") == "ok"
+        fallback_ok = Map.get(fs, "status") == "ok"
+
+        if default_ok, do: :highest_first, else: :lowest_first
+
+      _ ->
+        :lowest_first
+    end
+  end
 end

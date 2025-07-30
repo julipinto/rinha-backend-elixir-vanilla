@@ -1,14 +1,22 @@
 defmodule RinhaVanilla.Payments.CreatePayment do
   alias RinhaVanilla.PriorityQueueCache
   alias RinhaVanilla.Types.CreatePaymentType
+  alias RinhaVanilla.Cache.LineCache
+
+  alias RinhaVanilla.Payments.PaymentQueueRouter
 
   def enqueue(%CreatePaymentType{} = payment_attrs) do
     {:ok, payload} = payment_attrs |> Map.from_struct() |> Jason.encode()
 
-    # We will use an score to prioritize payments
-    score = payment_attrs.amount_in_cents / 1.0
 
-    PriorityQueueCache.zadd(:payments_queue, payload, score)
+    case PaymentQueueRouter.route(payment_attrs) do
+      {:high_value, queue} ->
+        LineCache.ladd(:payments_queue, payload)
+
+      {:standard, queue} ->
+        score = payment_attrs.amount_in_cents / 1.0
+        PriorityQueueCache.zadd(:payments_queue, payload, score)
+    end
   end
 
   def get_summary() do

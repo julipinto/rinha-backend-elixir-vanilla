@@ -1,15 +1,14 @@
 defmodule RinhaVanilla.PriorityQueueCache do
   @moduledoc """
-  A module for managing cache operations.
+  A module for managing Redis Sorted Set operations.
   """
   require Logger
 
   import RinhaVanilla.Cache, only: [namespaced_key: 1, command: 1]
 
-  @queues [:payments_queue]
   @max_bulk_size 1000
 
-  def zadd(key, payload, score) when key in @queues do
+  def zadd(key, payload, score) do
     key = namespaced_key(key)
 
     case command(["ZADD", key, score, payload]) do
@@ -19,7 +18,12 @@ defmodule RinhaVanilla.PriorityQueueCache do
     end
   end
 
-  def bulk_zadd(key, score_payload_list) when key in @queues and is_list(score_payload_list) do
+  def zrange_with_scores(key, start_index, end_index) do
+    key = namespaced_key(key)
+    command(["ZRANGE", key, start_index, end_index, "WITHSCORES"])
+  end
+
+  def bulk_zadd(key, score_payload_list) when is_list(score_payload_list) do
     key = namespaced_key(key)
 
     failures =
@@ -46,7 +50,7 @@ defmodule RinhaVanilla.PriorityQueueCache do
     end
   end
 
-  def zpomax(key, demand) when key in @queues do
+  def zpomax(key, demand) do
     key = namespaced_key(key)
 
     case command(["ZPOPMAX", key, demand]) do
@@ -62,5 +66,10 @@ defmodule RinhaVanilla.PriorityQueueCache do
         Logger.error("Error fetching from Redis: #{inspect(reason)}")
         []
     end
+  end
+
+  def zcard(key) do
+    key = namespaced_key(key)
+    command(["ZCARD", key])
   end
 end
