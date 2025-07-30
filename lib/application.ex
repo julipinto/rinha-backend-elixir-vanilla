@@ -8,7 +8,9 @@ defmodule RinhaVanilla.Application do
       {Redix, name: RinhaVanilla.Redis},
       {Finch, name: RinhaVanilla.Finch},
       RinhaVanilla.Health.LeaderElector,
-      RinhaVanilla.Payments.Pipeline,
+      RinhaVanilla.Payments.StandardPayment.Pipeline,
+      RinhaVanilla.Stats.ThresholdManager,
+      RinhaVanilla.Pipelines.HighPayment.Pipeline,
       {Bandit, plug: RinhaVanilla.Plug.Router, port: 9999}
     ]
 

@@ -1,5 +1,4 @@
 defmodule RinhaVanilla.Payments.PaymentQueueRouter do
-  use GenServer
   require Logger
 
   alias RinhaVanilla.Stats.Tracker

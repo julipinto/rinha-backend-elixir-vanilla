@@ -10,11 +10,13 @@ defmodule RinhaVanilla.Payments.CreatePayment do
 
     case PaymentQueueRouter.route(payment_attrs) do
       {:high_value, queue} ->
-        LineCache.ladd(:payments_queue, payload)
+        LineCache.ladd(queue, payload)
+        {:ok, :enqueued_high_value}
 
       {:standard, queue} ->
         score_in_float = payment_attrs.amount_in_cents / 1.0
-        PriorityQueueCache.zadd(:payments_queue, payload, score_in_float)
+        PriorityQueueCache.zadd(queue, payload, score_in_float)
+        {:ok, :enqueued_standard}
     end
   end
 

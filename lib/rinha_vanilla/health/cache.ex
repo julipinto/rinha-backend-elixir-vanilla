@@ -1,5 +1,6 @@
 defmodule RinhaVanilla.Health.Cache do
   @cache_key "gateway_health_status"
+  @max_latency_overhead 1.25
 
   def get_status() do
     with {:ok, payload} <- Redix.command(RinhaVanilla.Redis, ["GET", @cache_key]),
@@ -13,7 +14,7 @@ defmodule RinhaVanilla.Health.Cache do
   end
 
   def preferred_processor() do
-    case Cache.get_status() do
+    case get_status() do
       {:ok, %{"default" => ds, "fallback" => fs}} ->
         default_ok = Map.get(ds, "status") == "ok"
         fallback_ok = Map.get(fs, "status") == "ok"

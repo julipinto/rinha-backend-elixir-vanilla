@@ -1,4 +1,4 @@
-defmodule RinhaVanilla.Pipelines.Producer do
+defmodule RinhaVanilla.Pipelines.StandardPayment.Producer do
   use GenStage
   @behaviour Broadway.Producer
 
@@ -33,11 +33,21 @@ defmodule RinhaVanilla.Pipelines.Producer do
   def handle_info(:poll, %{demand: demand} = state) when demand > 0 do
     schedule_poll(state.timer_interval_ms)
 
-    events = PriorityQueueCache.zpomax(state.queue_key, demand)
+    strategy = choose_fetch_strategy()
+
+    events =
+      case strategy do
+        :highest_first ->
+          Logger.info("Producer strategy: Highest first (default gateway is healthy)")
+          PriorityQueueCache.zpomax(state.queue_key, demand)
+
+        :lowest_first ->
+          Logger.info("Producer strategy: Lowest first (only fallback is available)")
+          PriorityQueueCache.zpopmin(state.queue_key, demand)
+      end
 
     messages =
-      events
-      |> Enum.map(fn payload ->
+      Enum.map(events, fn payload ->
         %Message{
           data: payload,
           metadata: %{},

@@ -1,28 +1,27 @@
-defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
+defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
   use Broadway
 
   require Logger
 
   alias Broadway.Message
-  alias RinhaVanilla.Health.Cache
   alias RinhaVanilla.Integrations.ProcessorIntegrations
   alias RinhaVanilla.Integrations.Types.PaymentType
-  alias RinhaVanilla.Pipelines.StandardPayment.Producer
-  alias RinhaVanilla.PriorityQueueCache
+  alias RinhaVanilla.Pipelines.HighValue.ListProducer
+  alias RinhaVanilla.Cache.LineCache
 
   @max_retries 3
-  @queue_key :payments_queue
+  @queue_key :high_value_queue
 
   def start_link(_opts) do
     Broadway.start_link(__MODULE__,
       name: __MODULE__,
       producer: [
-        module: {Producer, queue_key: @queue_key},
+        module: {ListProducer, queue_key: @queue_key},
         concurrency: 1
       ],
       processors: [
         default: [
-          concurrency: 2
+          concurrency: 5
         ]
       ]
     )
@@ -33,7 +32,7 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
     with {:ok, data} <- Jason.decode(message.data),
          %{"amount_in_cents" => amount, "correlation_id" => corr_id, "requested_at" => req_at} =
            data do
-      chosen_processor = Cache.preferred_processor()
+      chosen_processor = :default
 
       integration_payload =
         PaymentType.transform_amount(chosen_processor, %{
@@ -63,37 +62,21 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
         retry_count = Map.get(data, "retry_count", 0) + 1
 
         if retry_count > @max_retries do
-          Logger.error("Payment discarded after max retries: #{inspect(data)}")
+          Logger.error("High-value payment discarded after max retries: #{inspect(data)}")
           :discard
         else
-          data_to_retry = Map.put(data, "retry_count", retry_count)
-          score = Map.get(data_to_retry, "amount_in_cents")
-          {:ok, payload} = Jason.encode(data_to_retry)
-          {score, payload, message}
+          Map.put(data, "retry_count", retry_count)
         end
       end)
       |> Enum.reject(&(&1 == :discard))
 
-    if Enum.empty?(messages_to_retry) do
-      messages
-    else
-      score_payloads =
-        Enum.map(messages_to_retry, fn {score, payload, _msg} -> {score, payload} end)
-
-      case PriorityQueueCache.bulk_zadd(@queue_key, score_payloads) do
-        {:ok, :all_succeeded} ->
-          messages
-
-        {:error, failures} ->
-          Logger.error("Some Redis ZADD operations failed: #{inspect(failures)}")
-
-          failed_payloads =
-            failures
-            |> Enum.flat_map(fn {chunk, _reason} -> chunk end)
-            |> MapSet.new(fn {_score, payload} -> payload end)
-
-          Enum.filter(messages, fn msg -> MapSet.member?(failed_payloads, msg.data) end)
-      end
+    unless Enum.empty?(messages_to_retry) do
+      Enum.each(messages_to_retry, fn payload_map ->
+        {:ok, payload_str} = Jason.encode(payload_map)
+        LineCache.ladd(@queue_key, payload_str)
+      end)
     end
+
+    messages
   end
 end

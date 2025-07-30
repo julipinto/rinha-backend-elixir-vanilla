@@ -68,6 +68,24 @@ defmodule RinhaVanilla.PriorityQueueCache do
     end
   end
 
+  def zpopmin(key, demand) do
+    key = namespaced_key(key)
+
+    case command(["ZPOPMIN", key, demand]) do
+      {:ok, results} when is_list(results) ->
+        results
+        |> Enum.chunk_every(2)
+        |> Enum.map(fn [value, _score] -> value end)
+
+      {:ok, nil} ->
+        []
+
+      {:error, reason} ->
+        Logger.error("Error fetching from Redis with ZPOPMIN: #{inspect(reason)}")
+        []
+    end
+  end
+
   def zcard(key) do
     key = namespaced_key(key)
     command(["ZCARD", key])
