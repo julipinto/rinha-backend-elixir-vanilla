@@ -59,7 +59,7 @@ defmodule RinhaVanilla.Pipelines.Producer do
   end
 
   defp choose_fetch_strategy() do
-  case RinhaVanilla.Health.Cache.get_status() do
+    case RinhaVanilla.Health.Cache.get_status() do
       {:ok, %{"default" => ds, "fallback" => fs}} ->
         default_ok = Map.get(ds, "status") == "ok"
         fallback_ok = Map.get(fs, "status") == "ok"

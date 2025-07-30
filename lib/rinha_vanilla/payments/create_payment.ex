@@ -8,7 +8,6 @@ defmodule RinhaVanilla.Payments.CreatePayment do
   def enqueue(%CreatePaymentType{} = payment_attrs) do
     {:ok, payload} = payment_attrs |> Map.from_struct() |> Jason.encode()
 
-
     case PaymentQueueRouter.route(payment_attrs) do
       {:high_value, queue} ->
         LineCache.ladd(:payments_queue, payload)

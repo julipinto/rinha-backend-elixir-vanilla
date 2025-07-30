@@ -11,7 +11,8 @@ defmodule RinhaVanilla.Stats.ThresholdManager do
   @threshold_cache_key "high_value_threshold_in_cents"
   @recalc_interval_ms 30_000
   @min_sample_size 50
-  @percentile Application.get_env(:rinha_vanilla, :high_value_percentile, 0.8) # 80% = Top 20%
+  # 80% = Top 20%
+  @percentile Application.get_env(:rinha_vanilla, :high_value_percentile, 0.8)
 
   def start_link(_opts) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)

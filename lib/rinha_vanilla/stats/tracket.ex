@@ -1,6 +1,6 @@
 defmodule RinhaVanilla.Stats.Tracker do
   @stats_key "payments_processed_stats"
-  
+
   alias RinhaVanilla.PriorityQueueCache
   alias RinhaVanilla.Cache
 
