@@ -11,4 +11,34 @@ defmodule RinhaVanilla.Health.Cache do
         {:error, :not_available}
     end
   end
+
+  def preferred_processor() do
+    case Cache.get_status() do
+      {:ok, %{"default" => ds, "fallback" => fs}} ->
+        default_ok = Map.get(ds, "status") == "ok"
+        fallback_ok = Map.get(fs, "status") == "ok"
+
+        cond do
+          default_ok and not fallback_ok ->
+            :default
+
+          not default_ok and fallback_ok ->
+            :fallback
+
+          default_ok and fallback_ok ->
+            default_latency = ds["details"]["minResponseTime"]
+            fallback_latency = fs["details"]["minResponseTime"]
+
+            if default_latency > fallback_latency * @max_latency_overhead,
+              do: :fallback,
+              else: :default
+
+          true ->
+            :default
+        end
+
+      {:error, :not_available} ->
+        :default
+    end
+  end
 end

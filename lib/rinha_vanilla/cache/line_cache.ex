@@ -17,6 +17,4 @@ defmodule RinhaVanilla.Cache.LineCache do
       {:error, reason} -> {:error, reason}
     end
   end
-
-  # Other functions can be added here as needed.
 end

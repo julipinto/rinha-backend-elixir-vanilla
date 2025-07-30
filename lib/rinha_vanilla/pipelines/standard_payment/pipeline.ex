@@ -34,7 +34,7 @@ defmodule RinhaVanilla.Payments.Pipeline do
     with {:ok, data} <- Jason.decode(message.data),
          %{"amount_in_cents" => amount, "correlation_id" => corr_id, "requested_at" => req_at} =
            data do
-      chosen_processor = choose_processor()
+      chosen_processor = Cache.preferred_processor()
 
       integration_payload =
         PaymentType.transform_amount(chosen_processor, %{
@@ -95,37 +95,6 @@ defmodule RinhaVanilla.Payments.Pipeline do
 
           Enum.filter(messages, fn msg -> MapSet.member?(failed_payloads, msg.data) end)
       end
-    end
-  end
-
-  defp choose_processor() do
-    case Cache.get_status() do
-      {:ok, %{"default" => ds, "fallback" => fs}} ->
-        default_ok = Map.get(ds, "status") == "ok"
-        fallback_ok = Map.get(fs, "status") == "ok"
-
-        cond do
-          default_ok and not fallback_ok ->
-            :default
-
-          not default_ok and fallback_ok ->
-            :fallback
-
-          default_ok and fallback_ok ->
-            # Ambos estão OK, vamos comparar a latência.
-            default_latency = ds["details"]["minResponseTime"]
-            fallback_latency = fs["details"]["minResponseTime"]
-
-            if default_latency > fallback_latency * @max_latency_overhead,
-              do: :fallback,
-              else: :default
-
-          true ->
-            :default
-        end
-
-      {:error, :not_available} ->
-        :default
     end
   end
 end

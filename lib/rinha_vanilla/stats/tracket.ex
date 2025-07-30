@@ -22,6 +22,14 @@ defmodule RinhaVanilla.Stats.Tracker do
   end
 
   def get_high_value_threshold do
-    Cache.get(@stats_key)
+    @stats_key
+    |> Cache.get()
+    |> case do
+      {:ok, value} ->
+        {:ok, :erlang.binary_to_integer(value)}
+
+      otherwise ->
+        otherwise
+    end
   end
 end

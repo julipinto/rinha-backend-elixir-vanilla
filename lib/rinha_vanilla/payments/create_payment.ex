@@ -13,8 +13,8 @@ defmodule RinhaVanilla.Payments.CreatePayment do
         LineCache.ladd(:payments_queue, payload)
 
       {:standard, queue} ->
-        score = payment_attrs.amount_in_cents / 1.0
-        PriorityQueueCache.zadd(:payments_queue, payload, score)
+        score_in_float = payment_attrs.amount_in_cents / 1.0
+        PriorityQueueCache.zadd(:payments_queue, payload, score_in_float)
     end
   end
 
