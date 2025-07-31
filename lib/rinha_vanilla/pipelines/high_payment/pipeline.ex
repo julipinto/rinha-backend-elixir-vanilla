@@ -8,6 +8,7 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
   alias RinhaVanilla.Integrations.Types.PaymentType
   alias RinhaVanilla.Pipelines.HighValue.ListProducer
   alias RinhaVanilla.Cache.LineCache
+  alias RinhaVanilla.Payments.SuccessTracker
 
   @max_retries 3
   @queue_key :high_value_queue
@@ -43,6 +44,7 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
 
       case ProcessorIntegrations.process_payment(integration_payload) do
         {:ok, _response} ->
+          SuccessTracker.track(chosen_processor, data)
           message
 
         {:error, _reason} ->

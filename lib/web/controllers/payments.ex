@@ -6,6 +6,9 @@ defmodule RinhaVanillaWeb.Controllers.PaymentsController do
   alias RinhaVanilla.Validators.CreatePaymentValidator
   alias RinhaVanilla.Types.CreatePaymentType
   alias RinhaVanilla.Payments.CreatePayment
+  alias RinhaVanilla.Validators.SummaryFiltersValidator
+  alias RinhaVanilla.Types.SummaryFiltersType
+  alias RinhaVanilla.Payments.PaymentsSummary
 
   def handle_payment(conn) do
     with {:ok, body, _conn} <- Plug.Conn.read_body(conn),
@@ -32,7 +35,19 @@ defmodule RinhaVanillaWeb.Controllers.PaymentsController do
   end
 
   def summary(conn) do
-    # Logic to return payment summary
-    send_resp(conn, 200, "Payment summary")
+    with {:ok, validated_params} <- SummaryFiltersValidator.validate(conn.query_params),
+         filters_struct = SummaryFiltersType.new(validated_params),
+         summary_response = PaymentsSummary.generate_summary(filters_struct) do
+      conn
+      |> put_resp_content_type("application/json")
+      |> send_resp(200, Jason.encode!(summary_response))
+    else
+      {:error, {:validation, reason}} ->
+        Logger.error("Summary validation error: #{inspect(reason)}")
+        send_resp(conn, 422, "Unprocessable Entity: #{reason}")
+
+      _error ->
+        send_resp(conn, 500, "Internal Server Error")
+    end
   end
 end

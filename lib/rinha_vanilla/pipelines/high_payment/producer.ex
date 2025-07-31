@@ -16,11 +16,11 @@ defmodule RinhaVanilla.Pipelines.HighPayment.ListProducer do
     {:producer, state}
   end
 
-    def handle_demand(incoming_demand, state) do
+  def handle_demand(incoming_demand, state) do
     {:noreply, [], %{state | demand: state.demand + incoming_demand}}
   end
 
-    def handle_info(:poll, %{demand: demand, queue_key: key} = state) when demand > 0 do
+  def handle_info(:poll, %{demand: demand, queue_key: key} = state) when demand > 0 do
     Process.send_after(self(), :poll, @timer_interval_ms)
 
     events = LineCache.rpop(key, demand)
