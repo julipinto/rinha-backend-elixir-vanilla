@@ -19,10 +19,4 @@ defmodule RinhaVanilla.Payments.CreatePayment do
         {:ok, :enqueued_standard}
     end
   end
-
-  def get_summary() do
-    # TODO: Implementar a busca e agregação no Redis.
-    # Por enquanto, vamos retornar um valor fixo.
-    {:ok, %{default: %{totalRequests: 0, totalAmount: 0.0}}}
-  end
 end

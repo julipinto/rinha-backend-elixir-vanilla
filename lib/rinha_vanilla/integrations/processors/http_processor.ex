@@ -26,9 +26,6 @@ defmodule RinhaVanilla.Integrations.Processor.HttpProcessor do
   end
 
   def process_payment(processor, payment_payload) do
-    # TODO: Remve agter the integration is stable
-    purge(processor)
-
     url = Config.payment_route(processor)
     client = Config.client(processor)
 
