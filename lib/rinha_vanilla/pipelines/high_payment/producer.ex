@@ -9,6 +9,7 @@ defmodule RinhaVanilla.Pipelines.HighPayment.ListProducer do
 
   @timer_interval_ms 200
 
+  @impl true
   def init(opts) do
     queue_key = Keyword.fetch!(opts, :queue_key)
     state = %{queue_key: queue_key, demand: 0}
@@ -16,10 +17,12 @@ defmodule RinhaVanilla.Pipelines.HighPayment.ListProducer do
     {:producer, state}
   end
 
+  @impl true
   def handle_demand(incoming_demand, state) do
     {:noreply, [], %{state | demand: state.demand + incoming_demand}}
   end
 
+  @impl true
   def handle_info(:poll, %{demand: demand, queue_key: key} = state) when demand > 0 do
     Process.send_after(self(), :poll, @timer_interval_ms)
 
@@ -33,6 +36,7 @@ defmodule RinhaVanilla.Pipelines.HighPayment.ListProducer do
     {:noreply, messages, %{state | demand: state.demand - length(messages)}}
   end
 
+  @impl true
   def handle_info(:poll, state) do
     Process.send_after(self(), :poll, @timer_interval_ms)
     {:noreply, [], state}

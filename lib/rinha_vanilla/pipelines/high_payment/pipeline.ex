@@ -6,7 +6,7 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
   alias Broadway.Message
   alias RinhaVanilla.Integrations.ProcessorIntegrations
   alias RinhaVanilla.Integrations.Types.PaymentType
-  alias RinhaVanilla.Pipelines.HighValue.ListProducer
+  alias RinhaVanilla.Pipelines.HighPayment.ListProducer
   alias RinhaVanilla.Cache.LineCache
   alias RinhaVanilla.Payments.SuccessTracker
 

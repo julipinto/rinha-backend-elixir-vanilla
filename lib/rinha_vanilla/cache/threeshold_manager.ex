@@ -27,8 +27,7 @@ defmodule RinhaVanilla.Stats.ThresholdManager do
 
   @impl true
   def handle_info(:recalculate_threshold, state) do
-    {:ok, total_count_str} = Tracker.total_payments_count()
-    total_count = String.to_integer(total_count_str)
+    {:ok, total_count} = Tracker.total_payments_count() |> IO.inspect()
 
     if total_count > @min_sample_size do
       index = round(total_count * @percentile)
