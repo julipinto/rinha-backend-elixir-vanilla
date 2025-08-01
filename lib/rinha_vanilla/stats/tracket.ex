@@ -1,5 +1,6 @@
 defmodule RinhaVanilla.Stats.Tracker do
   @stats_key "payments_processed_stats"
+  @high_value_threshold_key "high_value_threshold_in_cents"
 
   alias RinhaVanilla.PriorityQueueCache
   alias RinhaVanilla.Cache
@@ -22,11 +23,11 @@ defmodule RinhaVanilla.Stats.Tracker do
   end
 
   def get_high_value_threshold do
-    @stats_key
+    @high_value_threshold_key
     |> Cache.get()
     |> case do
-      {:ok, value} ->
-        {:ok, :erlang.binary_to_integer(value)}
+      {:ok, value_str} ->
+        {:ok, :erlang.binary_to_integer(value_str)}
 
       otherwise ->
         otherwise
