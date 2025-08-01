@@ -21,3 +21,5 @@ rinha_vanila-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+content_file.txt

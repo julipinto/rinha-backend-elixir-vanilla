@@ -86,6 +86,11 @@ defmodule RinhaVanilla.PriorityQueueCache do
     end
   end
 
+  def zrange_by_score(key, start_score, end_score) do
+    key = namespaced_key(key)
+    command(["ZRANGEBYSCORE", key, start_score, end_score])
+  end
+
   def zcard(key) do
     key = namespaced_key(key)
     command(["ZCARD", key])

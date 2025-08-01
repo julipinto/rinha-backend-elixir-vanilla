@@ -25,7 +25,7 @@ defmodule RinhaVanilla.Payments.PaymentsSummary do
 
   defp fetch_and_aggregate(processor, start_time, end_time) do
     key = "processed_payments:#{processor}"
-    {:ok, results} = PriorityQueueCache.command(["ZRANGEBYSCORE", key, start_time, end_time])
+    {:ok, results} = PriorityQueueCache.zrange_by_score(key, start_time, end_time)
 
     Enum.reduce(results, %{total_requests: 0, total_amount_in_cents: 0}, fn payload, acc ->
       {:ok, payment_data} = Jason.decode(payload)
@@ -37,7 +37,8 @@ defmodule RinhaVanilla.Payments.PaymentsSummary do
     end)
   end
 
-    defp to_unix_timestamp(nil, default), do: default
+  defp to_unix_timestamp(nil, default), do: default
+
   defp to_unix_timestamp(iso_string, _default) do
     {:ok, datetime, _} = DateTime.from_iso8601(iso_string)
     DateTime.to_unix(datetime)
