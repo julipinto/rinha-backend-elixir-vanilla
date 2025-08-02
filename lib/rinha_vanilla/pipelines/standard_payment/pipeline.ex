@@ -4,7 +4,7 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
   require Logger
 
   alias Broadway.Message
-  alias RinhaVanilla.Health.Cache
+  alias RinhaVanilla.Health.HealthCache
   alias RinhaVanilla.Integrations.ProcessorIntegrations
   alias RinhaVanilla.Integrations.Types.PaymentType
   alias RinhaVanilla.Pipelines.StandardPayment.Producer
@@ -34,7 +34,7 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
     with {:ok, data} <- Jason.decode(message.data),
          %{"amount_in_cents" => amount, "correlation_id" => corr_id, "requested_at" => req_at} =
            data do
-      chosen_processor = Cache.preferred_processor()
+      chosen_processor = HealthCache.preferred_processor()
 
       integration_payload =
         PaymentType.transform_amount(chosen_processor, %{
@@ -49,6 +49,7 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
           message
 
         {:error, _reason} ->
+          HealthCache.report_failure(chosen_processor)
           Message.failed(message, "processor_error")
       end
     else

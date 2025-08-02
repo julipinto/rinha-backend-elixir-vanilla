@@ -9,6 +9,7 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
   alias RinhaVanilla.Pipelines.HighPayment.ListProducer
   alias RinhaVanilla.Cache.LineCache
   alias RinhaVanilla.Payments.SuccessTracker
+  alias RinhaVanilla.Health.HealthCache
 
   @max_retries 3
   @queue_key :high_value_queue
@@ -48,6 +49,7 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
           message
 
         {:error, _reason} ->
+          HealthCache.report_failure(chosen_processor)
           Message.failed(message, "processor_error")
       end
     else

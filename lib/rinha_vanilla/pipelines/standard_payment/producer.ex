@@ -69,7 +69,7 @@ defmodule RinhaVanilla.Pipelines.StandardPayment.Producer do
   end
 
   defp choose_fetch_strategy() do
-    case RinhaVanilla.Health.Cache.preferred_processor() do
+    case RinhaVanilla.Health.HealthCache.preferred_processor() do
       :default -> :highest_first
       :fallback -> :lowest_first
       _ -> :lowest_first

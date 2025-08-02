@@ -1,4 +1,4 @@
-defmodule RinhaVanilla.Health.Cache do
+defmodule RinhaVanilla.Health.HealthCache do
   @cache_key "gateway_health_status"
   @max_latency_overhead 1.25
 
@@ -40,6 +40,26 @@ defmodule RinhaVanilla.Health.Cache do
 
       {:error, :not_available} ->
         :default
+    end
+  end
+
+  def update_status(status_map) when is_map(status_map) do
+    payload = Jason.encode!(status_map)
+    RinhaVanilla.Cache.set(@cache_key, payload)
+  end
+
+  def report_failure(processor_atom) do
+    with {:ok, current_status} <- get_status() do
+      updated_status =
+        Map.put(current_status, Atom.to_string(processor_atom), %{
+          "status" => "failing",
+          "details" => %{"error" => "Reported by worker in real-time"}
+        })
+
+      update_status(updated_status)
+    else
+      _error ->
+        :ok
     end
   end
 end
