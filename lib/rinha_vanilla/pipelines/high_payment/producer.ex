@@ -3,7 +3,7 @@ defmodule RinhaVanilla.Pipelines.HighPayment.ListProducer do
   @behaviour Broadway.Producer
 
   alias Broadway.Message
-  alias RinhaVanilla.Cache.LineCache
+  alias RinhaVanilla.Cache.RegularQueueCache
 
   require Logger
 
@@ -26,7 +26,7 @@ defmodule RinhaVanilla.Pipelines.HighPayment.ListProducer do
   def handle_info(:poll, %{demand: demand, queue_key: key} = state) when demand > 0 do
     Process.send_after(self(), :poll, @timer_interval_ms)
 
-    events = LineCache.rpop(key, demand)
+    events = RegularQueueCache.rpop(key, demand)
 
     messages =
       Enum.map(events, fn payload ->

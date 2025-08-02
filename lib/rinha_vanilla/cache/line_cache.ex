@@ -1,4 +1,4 @@
-defmodule RinhaVanilla.Cache.LineCache do
+defmodule RinhaVanilla.Cache.RegularQueueCache do
   @moduledoc """
   A module for managing Redis Line Cache operations.
   """

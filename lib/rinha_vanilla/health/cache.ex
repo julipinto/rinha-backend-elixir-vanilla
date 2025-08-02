@@ -62,4 +62,20 @@ defmodule RinhaVanilla.Health.HealthCache do
         :ok
     end
   end
+
+  def is_processor_ok?(processor_atom) do
+    get_status()
+    |> case do
+      {:ok, status_map} ->
+        get_in(status_map, [Atom.to_string(processor_atom), "status"]) == "ok"
+
+      _ ->
+        # If we can't get the status, assume the cache is not initialized yet
+        true
+    end
+    |> case do
+      true -> true
+      false -> {:error, :known_gateway_offline}
+    end
+  end
 end

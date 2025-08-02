@@ -31,17 +31,11 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
 
   @impl true
   def handle_message(_processor, message, _context) do
+    chosen_processor = HealthCache.preferred_processor()
+    
     with {:ok, data} <- Jason.decode(message.data),
-         %{"amount_in_cents" => amount, "correlation_id" => corr_id, "requested_at" => req_at} =
-           data do
-      chosen_processor = HealthCache.preferred_processor()
-
-      integration_payload =
-        PaymentType.transform_amount(chosen_processor, %{
-          amount_in_cents: amount,
-          correlation_id: corr_id,
-          requested_at: req_at
-        })
+         true <- HealthCache.is_processor_ok?(chosen_processor) do
+      integration_payload = PaymentType.transform_amount(chosen_processor, data)
 
       case ProcessorIntegrations.process_payment(integration_payload) do
         {:ok, _response} ->
@@ -50,9 +44,12 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
 
         {:error, _reason} ->
           HealthCache.report_failure(chosen_processor)
-          Message.failed(message, "processor_error")
+          Message.failed(message, :known_gateway_offline)
       end
     else
+      {:error, :known_gateway_offline} ->
+        Message.failed(message, :known_gateway_offline)
+
       _error ->
         Message.failed(message, "invalid_payload")
     end
@@ -60,43 +57,31 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
 
   @impl true
   def handle_failed(messages, _context) do
-    messages_to_retry =
-      Enum.map(messages, fn message ->
-        {:ok, data} = Jason.decode(message.data)
-        retry_count = Map.get(data, "retry_count", 0) + 1
-
-        if retry_count > @max_retries do
-          Logger.error("Payment discarded after max retries: #{inspect(data)}")
-          :discard
-        else
-          data_to_retry = Map.put(data, "retry_count", retry_count)
-          score = Map.get(data_to_retry, "amount_in_cents")
-          {:ok, payload} = Jason.encode(data_to_retry)
-          {score, payload, message}
-        end
+    messages_to_requeue =
+      Enum.filter(messages, fn message ->
+        message.reason == :known_gateway_offline
       end)
-      |> Enum.reject(&(&1 == :discard))
 
-    if Enum.empty?(messages_to_retry) do
-      messages
-    else
+    unless Enum.empty?(messages_to_requeue) do
       score_payloads =
-        Enum.map(messages_to_retry, fn {score, payload, _msg} -> {score, payload} end)
+        Enum.map(messages_to_requeue, fn message ->
+          {:ok, data} = Jason.decode(message.data)
+          score = Map.get(data, "amount_in_cents") / 1.0
+          {score, message.data}
+        end)
 
+      # return to priority queue to wait for gateway recovery
       case PriorityQueueCache.bulk_zadd(@queue_key, score_payloads) do
-        {:ok, :all_succeeded} ->
-          messages
+        {:ok, _} ->
+          Logger.info(
+            "#{length(score_payloads)} payments re-queued to wait for gateway recovery."
+          )
 
-        {:error, failures} ->
-          Logger.error("Some Redis ZADD operations failed: #{inspect(failures)}")
-
-          failed_payloads =
-            failures
-            |> Enum.flat_map(fn {chunk, _reason} -> chunk end)
-            |> MapSet.new(fn {_score, payload} -> payload end)
-
-          Enum.filter(messages, fn msg -> MapSet.member?(failed_payloads, msg.data) end)
+        {:error, reason} ->
+          Logger.error("Failed to re-queue messages: #{inspect(reason)}")
       end
     end
+
+    messages
   end
 end
