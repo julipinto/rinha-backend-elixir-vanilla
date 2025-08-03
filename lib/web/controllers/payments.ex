@@ -9,6 +9,7 @@ defmodule RinhaVanillaWeb.Controllers.PaymentsController do
   alias RinhaVanilla.Validators.SummaryFiltersValidator
   alias RinhaVanilla.Types.SummaryFiltersType
   alias RinhaVanilla.Payments.PaymentsSummary
+  alias RinhaVanilla.Payments.Purge
 
   def handle_payment(conn) do
     with {:ok, body, _conn} <- Plug.Conn.read_body(conn),
@@ -48,6 +49,17 @@ defmodule RinhaVanillaWeb.Controllers.PaymentsController do
 
       _error ->
         send_resp(conn, 500, "Internal Server Error")
+    end
+  end
+
+  def purge(conn) do
+    case Purge.purge_all_data() do
+      {:ok, _} ->
+        send_resp(conn, 204, "")
+
+      {:error, reason} ->
+        Logger.error("Failed to purge data: #{inspect(reason)}")
+        send_resp(conn, 500, "Failed to purge data")
     end
   end
 end

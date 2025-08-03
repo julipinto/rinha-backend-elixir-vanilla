@@ -10,6 +10,8 @@ defmodule RinhaVanilla.Plug.Router do
 
   get("/payments-summary", do: PaymentsController.summary(conn))
 
+  post("/purge-payments", do: PaymentsController.purge(conn))
+
   match _ do
     send_resp(conn, 404, "Not Found")
   end

@@ -39,7 +39,10 @@ defmodule RinhaVanilla.Integrations.Processor.HttpProcessor do
         {:ok, Jason.decode!(body)}
 
       {:ok, %Finch.Response{status: status, body: body}} ->
-        Logger.warning("Payment processing returned status #{status} for processor #{processor} with body: #{body}")
+        Logger.warning(
+          "Payment processing returned status #{status} for processor #{processor} with body: #{body}"
+        )
+
         {:error, "Payment processing failed with status #{status} for processor #{processor}"}
 
       {:error, reason} ->

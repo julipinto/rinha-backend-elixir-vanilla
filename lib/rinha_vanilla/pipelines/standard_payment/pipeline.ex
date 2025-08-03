@@ -34,7 +34,6 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
 
     with {:ok, data} <- Jason.decode(message.data),
          true <- HealthCache.is_processor_ok?(chosen_processor) do
-
       integration_payload = PaymentType.transform_amount(chosen_processor, data)
 
       case ProcessorIntegrations.process_payment(integration_payload) do
@@ -42,6 +41,7 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
           case track_with_retry(chosen_processor, data) do
             :ok ->
               message
+
             {:error, _reason} ->
               Message.failed(message, :persistent_tracking_failure)
           end
@@ -103,6 +103,7 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
     PERSISTENT TRACKING FAILURE! Payment processed but could not be tracked after multiple retries.
     Manual intervention required for correlation_id: #{data["correlation_id"]}
     """)
+
     Logger.flush()
     System.halt(1)
     # {:error, :max_retries_reached}
@@ -110,7 +111,9 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
 
   defp track_with_retry(chosen_processor, data, retries_left) do
     case SuccessTracker.track(chosen_processor, data) do
-      {:ok, _} -> :ok
+      {:ok, _} ->
+        :ok
+
       {:error, _reason} ->
         Process.sleep(100)
         track_with_retry(chosen_processor, data, retries_left - 1)

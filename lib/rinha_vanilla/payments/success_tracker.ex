@@ -5,9 +5,11 @@ defmodule RinhaVanilla.Payments.SuccessTracker do
   @stats_key "payments_processed_stats"
 
   def track(processor_atom, data) do
-    processing_timestamp_ms = DateTime.utc_now() |> DateTime.to_unix(:millisecond)
+    requested_at_iso = data["requested_at"]
+    {:ok, datetime, _} = DateTime.from_iso8601(requested_at_iso)
+    timestamp_ms = DateTime.to_unix(datetime, :millisecond)
 
-    summary_command = build_summary_command(processor_atom, data, processing_timestamp_ms)
+    summary_command = build_summary_command(processor_atom, data, timestamp_ms)
     stats_command = build_stats_command(data)
     all_commands = [summary_command, stats_command]
 
@@ -20,7 +22,8 @@ defmodule RinhaVanilla.Payments.SuccessTracker do
     summary_payload =
       Jason.encode!(%{
         correlation_id: data["correlation_id"],
-        amount_in_cents: data["amount_in_cents"]
+        amount_in_cents: data["amount_in_cents"],
+        requested_at: data["requested_at"],
       })
 
     [:zadd, summary_key, timestamp_ms, summary_payload]

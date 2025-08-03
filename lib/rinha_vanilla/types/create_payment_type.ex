@@ -9,7 +9,7 @@ defmodule RinhaVanilla.Types.CreatePaymentType do
       correlation_id: Map.get(params, "correlationId"),
       amount: params |> Map.get("amount"),
       amount_in_cents: params |> Map.get("amount") |> Kernel.*(100) |> trunc(),
-      requested_at: DateTime.utc_now() |> DateTime.to_iso8601()
+      # requested_at: DateTime.utc_now() |> DateTime.to_iso8601()
     }
   end
 end
