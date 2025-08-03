@@ -32,25 +32,30 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
   def handle_message(_processor, message, _context) do
     chosen_processor = :default
 
-    with {:ok, data} <- Jason.decode(message.data),
-         true <- HealthCache.is_processor_ok?(chosen_processor) do
-      integration_payload = PaymentType.transform_amount(chosen_processor, data)
-
-      case ProcessorIntegrations.process_payment(integration_payload) do
-        {:ok, _response} ->
-          SuccessTracker.track(chosen_processor, data)
-          message
-
-        {:error, _reason} ->
-          HealthCache.report_failure(chosen_processor)
-          Message.failed(message, :known_gateway_offline)
-      end
+    with true <- HealthCache.is_processor_ok?(chosen_processor),
+         {:ok, data} <- Jason.decode(message.data),
+         integration_payload = PaymentType.transform_amount(chosen_processor, data),
+         {:ok, _response} <- ProcessorIntegrations.process_payment(integration_payload),
+         :ok <- track_with_retry(chosen_processor, data) do
+      message
     else
       {:error, :known_gateway_offline} ->
         Message.failed(message, :known_gateway_offline)
 
+      {:error, %Jason.DecodeError{} = data} ->
+        Logger.error("Failed to decode JSON data: #{inspect(data)}")
+        Message.failed(message, :invalid_payload)
+
+      {:error, :max_retries_reached} ->
+        Message.failed(message, :persistent_tracking_failure)
+
+      {:error, _reason} ->
+        HealthCache.report_failure(chosen_processor)
+        Message.failed(message, :known_gateway_offline)
+
       _error ->
-        Message.failed(message, "invalid_payload")
+        Logger.error("Unexpected error processing message: #{inspect(message)}")
+        Message.failed(message, :unknown_error)
     end
   end
 
@@ -75,5 +80,30 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
     end
 
     messages
+  end
+
+  defp track_with_retry(chosen_processor, data, retries_left \\ 3)
+
+  defp track_with_retry(_processor, data, 0) do
+    inspect_data = inspect(data)
+
+    Logger.critical("""
+    PERSISTENT TRACKING FAILURE! Payment processed but could not be tracked after multiple retries.
+    Manual intervention required for correlation_id: #{data["correlation_id"]}
+    Data: #{inspect_data}
+    """)
+
+    {:error, :max_retries_reached}
+  end
+
+  defp track_with_retry(chosen_processor, data, retries_left) do
+    case SuccessTracker.track(chosen_processor, data) do
+      {:ok, _} ->
+        :ok
+
+      {:error, _reason} ->
+        Process.sleep(100)
+        track_with_retry(chosen_processor, data, retries_left - 1)
+    end
   end
 end

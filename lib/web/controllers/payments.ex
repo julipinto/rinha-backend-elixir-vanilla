@@ -37,6 +37,7 @@ defmodule RinhaVanillaWeb.Controllers.PaymentsController do
 
   def summary(conn) do
     query_params = conn |> fetch_query_params() |> Map.get(:query_params, %{})
+
     with {:ok, validated_params} <- SummaryFiltersValidator.validate(query_params),
          filters_struct = SummaryFiltersType.new(validated_params),
          summary_response = PaymentsSummary.generate_summary(filters_struct) do

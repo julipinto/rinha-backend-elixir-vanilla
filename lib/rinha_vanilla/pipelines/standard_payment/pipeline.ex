@@ -32,33 +32,30 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
   def handle_message(_processor, message, _context) do
     chosen_processor = HealthCache.preferred_processor()
 
-    with {:ok, data} <- Jason.decode(message.data),
-         true <- HealthCache.is_processor_ok?(chosen_processor) do
-      integration_payload = PaymentType.transform_amount(chosen_processor, data)
-
-      case ProcessorIntegrations.process_payment(integration_payload) do
-        {:ok, _response} ->
-          case track_with_retry(chosen_processor, data) do
-            :ok ->
-              message
-
-            {:error, _reason} ->
-              Message.failed(message, :persistent_tracking_failure)
-          end
-
-        {:error, _reason} ->
-          HealthCache.report_failure(chosen_processor)
-          Message.failed(message, :known_gateway_offline)
-      end
+    with true <- HealthCache.is_processor_ok?(chosen_processor),
+         {:ok, data} <- Jason.decode(message.data),
+         integration_payload = PaymentType.transform_amount(chosen_processor, data),
+         {:ok, _response} <- ProcessorIntegrations.process_payment(integration_payload),
+         :ok <- track_with_retry(chosen_processor, data) do
+      message
     else
       {:error, :known_gateway_offline} ->
         Message.failed(message, :known_gateway_offline)
 
-      {:error, :tracking_failed} ->
-        Message.failed(message, :tracking_failed)
+      {:error, %Jason.DecodeError{} = data} ->
+        Logger.error("Failed to decode JSON data: #{inspect(data)}")
+        Message.failed(message, :invalid_payload)
+
+      {:error, :max_retries_reached} ->
+        Message.failed(message, :persistent_tracking_failure)
+
+      {:error, _reason} ->
+        HealthCache.report_failure(chosen_processor)
+        Message.failed(message, :known_gateway_offline)
 
       _error ->
-        Message.failed(message, "invalid_payload")
+        Logger.error("Unexpected error processing message: #{inspect(message)}")
+        Message.failed(message, :unknown_error)
     end
   end
 
@@ -68,16 +65,16 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
       Enum.filter(messages, fn message ->
         case message.status do
           {:failed, :known_gateway_offline} -> true
-          {:failed, :persistent_tracking_failure} -> true
           _ -> false
         end
       end)
+
 
     unless Enum.empty?(messages_to_requeue) do
       score_payloads =
         Enum.map(messages_to_requeue, fn message ->
           {:ok, data} = Jason.decode(message.data)
-          score = Map.get(data, "amount") / 1.0
+          score = Map.get(data, "amount_in_cents") / 1.0
           {score, message.data}
         end)
 
@@ -104,9 +101,7 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
     Manual intervention required for correlation_id: #{data["correlation_id"]}
     """)
 
-    Logger.flush()
-    System.halt(1)
-    # {:error, :max_retries_reached}
+    {:error, :max_retries_reached}
   end
 
   defp track_with_retry(chosen_processor, data, retries_left) do
