@@ -4,7 +4,7 @@ defmodule RinhaVanilla.Health.Monitor do
   require Logger
 
   alias RinhaVanilla.Integrations.ProcessorIntegrations
-  alias RinhaVanilla.Cache
+  alias RinhaVanilla.Health.HealthCache
 
   # 5 segundos
   @check_interval_ms 5_000
@@ -30,7 +30,7 @@ defmodule RinhaVanilla.Health.Monitor do
     results = Task.await_many(tasks, 5000)
 
     status_map = build_status_map(results)
-    Cache.update_status(status_map)
+    HealthCache.update_status(status_map)
 
     Logger.info("Health status cache updated by monitor.")
     Process.send_after(self(), :run_health_check, @check_interval_ms)

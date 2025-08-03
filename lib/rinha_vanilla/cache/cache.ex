@@ -58,4 +58,8 @@ defmodule RinhaVanilla.Cache do
   def command(args) do
     Redix.command(RinhaVanilla.Redis, args)
   end
+
+  def cleanup() do
+    Redix.command(RinhaVanilla.Redis, ["FLUSHDB"])
+  end
 end

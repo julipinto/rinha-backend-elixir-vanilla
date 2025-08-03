@@ -8,10 +8,10 @@ defmodule RinhaVanilla.Stats.Tracker do
   @doc """
   Register the value of a successful payment in a Sorted Set for analysis.
   """
-  def track_payment(amount_in_cents, correlation_id) do
+  def track_payment(amount, correlation_id) do
     # We are using an sorted set to keep the values ordered.
     # The member needs to be unique, so the correlation_id is perfect.
-    PriorityQueueCache.zadd(@stats_key, correlation_id, amount_in_cents)
+    PriorityQueueCache.zadd(@stats_key, correlation_id, amount)
   end
 
   def range_payments(index) do

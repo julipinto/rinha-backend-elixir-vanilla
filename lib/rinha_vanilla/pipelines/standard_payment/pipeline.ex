@@ -11,7 +11,6 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
   alias RinhaVanilla.PriorityQueueCache
   alias RinhaVanilla.Payments.SuccessTracker
 
-  @max_retries 3
   @queue_key :payments_queue
 
   def start_link(_opts) do
@@ -32,7 +31,7 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
   @impl true
   def handle_message(_processor, message, _context) do
     chosen_processor = HealthCache.preferred_processor()
-    
+
     with {:ok, data} <- Jason.decode(message.data),
          true <- HealthCache.is_processor_ok?(chosen_processor) do
       integration_payload = PaymentType.transform_amount(chosen_processor, data)
@@ -59,14 +58,14 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
   def handle_failed(messages, _context) do
     messages_to_requeue =
       Enum.filter(messages, fn message ->
-        message.reason == :known_gateway_offline
+        message.status == {:failed, :known_gateway_offline}
       end)
 
     unless Enum.empty?(messages_to_requeue) do
       score_payloads =
         Enum.map(messages_to_requeue, fn message ->
           {:ok, data} = Jason.decode(message.data)
-          score = Map.get(data, "amount_in_cents") / 1.0
+          score = Map.get(data, "amount") / 1.0
           {score, message.data}
         end)
 

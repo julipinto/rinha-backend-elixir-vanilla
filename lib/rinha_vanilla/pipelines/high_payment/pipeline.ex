@@ -11,7 +11,6 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
   alias RinhaVanilla.Payments.SuccessTracker
   alias RinhaVanilla.Health.HealthCache
 
-  @max_retries 3
   @queue_key :high_value_queue
 
   def start_link(_opts) do
@@ -35,7 +34,6 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
 
     with {:ok, data} <- Jason.decode(message.data),
          true <- HealthCache.is_processor_ok?(chosen_processor) do
-
       integration_payload = PaymentType.transform_amount(chosen_processor, data)
 
       case ProcessorIntegrations.process_payment(integration_payload) do
@@ -60,11 +58,13 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
   def handle_failed(messages, _context) do
     messages_to_requeue =
       Enum.filter(messages, fn message ->
-        message.reason == :known_gateway_offline
+        message.status == {:failed, :known_gateway_offline}
       end)
 
     unless Enum.empty?(messages_to_requeue) do
-      Logger.info("#{length(messages_to_requeue)} high-value payments re-queued to wait for default gateway.")
+      Logger.info(
+        "#{length(messages_to_requeue)} high-value payments re-queued to wait for default gateway."
+      )
 
       Enum.each(messages_to_requeue, fn message ->
         RegularQueueCache.ladd(@queue_key, message.data)

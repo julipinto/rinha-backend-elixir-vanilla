@@ -27,12 +27,12 @@ defmodule RinhaVanilla.Payments.PaymentsSummary do
     key = "processed_payments:#{processor}"
     {:ok, results} = PriorityQueueCache.zrange_by_score(key, start_time, end_time)
 
-    Enum.reduce(results, %{total_requests: 0, total_amount_in_cents: 0}, fn payload, acc ->
+    Enum.reduce(results, %{total_requests: 0, total_amount: 0}, fn payload, acc ->
       {:ok, payment_data} = Jason.decode(payload)
 
       %{
         total_requests: acc.total_requests + 1,
-        total_amount_in_cents: acc.total_amount_in_cents + payment_data["amount_in_cents"]
+        total_amount: acc.total_amount + payment_data["amount"]
       }
     end)
   end

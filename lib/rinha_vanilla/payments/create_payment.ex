@@ -14,7 +14,7 @@ defmodule RinhaVanilla.Payments.CreatePayment do
         {:ok, :enqueued_high_value}
 
       {:standard, queue} ->
-        score_in_float = payment_attrs.amount_in_cents / 1.0
+        score_in_float = payment_attrs.amount / 1.0
         PriorityQueueCache.zadd(queue, payload, score_in_float)
         {:ok, :enqueued_standard}
     end

@@ -15,6 +15,9 @@ defmodule RinhaVanilla.Application do
     ]
 
     opts = [strategy: :one_for_one, name: RinhaVanilla.Supervisor]
-    Supervisor.start_link(children, opts)
+    with {:ok, pid} <- Supervisor.start_link(children, opts) do
+      RinhaVanilla.Cache.cleanup()
+      {:ok, pid}
+    end
   end
 end
