@@ -38,11 +38,11 @@ defmodule RinhaVanilla.Pipelines.StandardPayment.Producer do
     events =
       case strategy do
         :highest_first ->
-          Logger.info("Producer strategy: Highest first (default gateway is healthy)")
+          # Logger.info("Producer strategy: Highest first (default gateway is healthy)")
           PriorityQueueCache.zpomax(state.queue_key, demand)
 
         :lowest_first ->
-          Logger.info("Producer strategy: Lowest first (only fallback is available)")
+          # Logger.info("Producer strategy: Lowest first (only fallback is available)")
           PriorityQueueCache.zpopmin(state.queue_key, demand)
       end
 

@@ -23,7 +23,7 @@ defmodule RinhaVanilla.Payments.SuccessTracker do
       Jason.encode!(%{
         correlation_id: data["correlation_id"],
         amount_in_cents: data["amount_in_cents"],
-        requested_at: data["requested_at"],
+        requested_at: data["requested_at"]
       })
 
     [:zadd, summary_key, timestamp_ms, summary_payload]
