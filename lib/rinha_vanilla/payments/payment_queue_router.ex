@@ -8,7 +8,7 @@ defmodule RinhaVanilla.Payments.PaymentQueueRouter do
 
   def route(payment_attrs) do
     case Tracker.get_high_value_threshold() do
-      {:ok, threshold} when payment_attrs.amount > threshold ->
+      {:ok, threshold} when payment_attrs.amount_in_cents > threshold ->
         {:high_value, @high_value_queue}
 
       _ ->

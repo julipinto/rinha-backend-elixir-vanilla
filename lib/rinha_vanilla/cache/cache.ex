@@ -53,7 +53,6 @@ defmodule RinhaVanilla.Cache do
     end
   end
 
-  # Wrapper para comandos diretos no Redis, para uso interno
   @doc false
   def command(args) do
     Redix.command(RinhaVanilla.Redis, args)
@@ -62,4 +61,17 @@ defmodule RinhaVanilla.Cache do
   def cleanup() do
     Redix.command(RinhaVanilla.Redis, ["FLUSHDB"])
   end
+
+  def pipeline(commands) when is_list(commands) do
+    namespaced_commands =
+      Enum.map(commands, fn [command, key | rest] ->
+        [to_command(command), namespaced_key(key) | rest]
+      end)
+
+    Redix.transaction_pipeline(RinhaVanilla.Redis, namespaced_commands)
+  end
+
+  defp to_command(:zadd), do: "ZADD"
+  defp to_command(other) when is_binary(other), do: String.upcase(other)
+  defp to_command(other) when is_atom(other), do: Atom.to_string(other)
 end

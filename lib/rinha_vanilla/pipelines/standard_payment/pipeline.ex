@@ -34,12 +34,17 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
 
     with {:ok, data} <- Jason.decode(message.data),
          true <- HealthCache.is_processor_ok?(chosen_processor) do
+
       integration_payload = PaymentType.transform_amount(chosen_processor, data)
 
       case ProcessorIntegrations.process_payment(integration_payload) do
         {:ok, _response} ->
-          SuccessTracker.track(chosen_processor, data)
-          message
+          case track_with_retry(chosen_processor, data) do
+            :ok ->
+              message
+            {:error, _reason} ->
+              Message.failed(message, :persistent_tracking_failure)
+          end
 
         {:error, _reason} ->
           HealthCache.report_failure(chosen_processor)
@@ -48,6 +53,9 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
     else
       {:error, :known_gateway_offline} ->
         Message.failed(message, :known_gateway_offline)
+
+      {:error, :tracking_failed} ->
+        Message.failed(message, :tracking_failed)
 
       _error ->
         Message.failed(message, "invalid_payload")
@@ -58,7 +66,11 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
   def handle_failed(messages, _context) do
     messages_to_requeue =
       Enum.filter(messages, fn message ->
-        message.status == {:failed, :known_gateway_offline}
+        case message.status do
+          {:failed, :known_gateway_offline} -> true
+          {:failed, :persistent_tracking_failure} -> true
+          _ -> false
+        end
       end)
 
     unless Enum.empty?(messages_to_requeue) do
@@ -82,5 +94,26 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
     end
 
     messages
+  end
+
+  defp track_with_retry(chosen_processor, data, retries_left \\ 3)
+
+  defp track_with_retry(_processor, data, 0) do
+    Logger.critical("""
+    PERSISTENT TRACKING FAILURE! Payment processed but could not be tracked after multiple retries.
+    Manual intervention required for correlation_id: #{data["correlation_id"]}
+    """)
+    Logger.flush()
+    System.halt(1)
+    # {:error, :max_retries_reached}
+  end
+
+  defp track_with_retry(chosen_processor, data, retries_left) do
+    case SuccessTracker.track(chosen_processor, data) do
+      {:ok, _} -> :ok
+      {:error, _reason} ->
+        Process.sleep(100)
+        track_with_retry(chosen_processor, data, retries_left - 1)
+    end
   end
 end

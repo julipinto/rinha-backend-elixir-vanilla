@@ -5,7 +5,7 @@ defmodule RinhaVanilla.Web.Parsers.SummaryParser do
         Atom.to_string(processor),
         %{
           "totalRequests" => data.total_requests,
-          "totalAmount" => data.total_amount
+          "totalAmount" => data.total_amount_in_cents / 100.0
         }
       }
     end)

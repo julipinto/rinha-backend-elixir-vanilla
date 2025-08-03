@@ -21,7 +21,7 @@ defmodule RinhaVanilla.Integrations.Processor.HttpProcessor do
 
       {:error, reason} ->
         Logger.error("Health check failed for processor #{processor}: #{inspect(reason)}")
-        {:error, "Health check failed: #{inspect(reason)}"}
+        {:error, "Health check failed for processor #{processor}: #{inspect(reason)}"}
     end
   end
 
@@ -39,12 +39,12 @@ defmodule RinhaVanilla.Integrations.Processor.HttpProcessor do
         {:ok, Jason.decode!(body)}
 
       {:ok, %Finch.Response{status: status, body: body}} ->
-        Logger.warning("Payment processing returned status #{status} with body: #{body}")
-        {:error, "Payment processing failed with status #{status}"}
+        Logger.warning("Payment processing returned status #{status} for processor #{processor} with body: #{body}")
+        {:error, "Payment processing failed with status #{status} for processor #{processor}"}
 
       {:error, reason} ->
-        Logger.error("Payment processing failed: #{inspect(reason)}")
-        {:error, "Payment processing failed: #{inspect(reason)}"}
+        Logger.error("Payment processing failed for processor #{processor}: #{inspect(reason)}")
+        {:error, "Payment processing failed for processor #{processor}: #{inspect(reason)}"}
     end
   end
 

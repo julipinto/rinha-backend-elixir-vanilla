@@ -58,7 +58,10 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
   def handle_failed(messages, _context) do
     messages_to_requeue =
       Enum.filter(messages, fn message ->
-        message.status == {:failed, :known_gateway_offline}
+        case message.status do
+          {:failed, :known_gateway_offline} -> true
+          _ -> false
+        end
       end)
 
     unless Enum.empty?(messages_to_requeue) do
