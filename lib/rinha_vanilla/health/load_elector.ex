@@ -30,25 +30,18 @@ defmodule RinhaVanilla.Health.LeaderElector do
   def handle_info(:try_acquire_lock, state) do
     case acquire_lock() do
       :ok ->
-        # Sucesso! Nos tornamos o líder.
         Logger.info("Node became the HealthCheck leader.")
-        # Se ainda não tivermos um monitor rodando, iniciamos um.
         new_state = if state.monitor_pid, do: state, else: start_monitor(state)
-        # Agendamos a próxima tentativa, que agora servirá como renovação do lock.
         Process.send_after(self(), :try_acquire_lock, @check_interval_ms)
         {:noreply, %{new_state | is_leader: true}}
 
       :error ->
-        # Falhamos em adquirir o lock, outro nó é o líder.
-        # Se por acaso tínhamos um monitor, o paramos.
         new_state = stop_monitor(state)
-        # Tentaremos novamente em 5 segundos.
         Process.send_after(self(), :try_acquire_lock, @check_interval_ms)
         {:noreply, %{new_state | is_leader: false}}
     end
   end
 
-  # --- Funções Privadas ---
 
   defp acquire_lock() do
     node_id = to_string(node())
@@ -68,7 +61,6 @@ defmodule RinhaVanilla.Health.LeaderElector do
   end
 
   defp stop_monitor(%{monitor_pid: pid} = state) when is_pid(pid) do
-    # DynamicSupervisor.terminate_child(__MODULE__.Supervisor, pid)
     if Process.alive?(pid), do: Process.exit(pid, :normal)
     %{state | monitor_pid: nil}
   end

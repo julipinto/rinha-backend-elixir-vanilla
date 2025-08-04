@@ -22,7 +22,7 @@ defmodule RinhaVanilla.Pipelines.HighPayment.Pipeline do
       ],
       processors: [
         default: [
-          concurrency: 5
+          concurrency: 150
         ]
       ]
     )

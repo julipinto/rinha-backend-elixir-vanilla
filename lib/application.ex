@@ -4,9 +4,12 @@ defmodule RinhaVanilla.Application do
 
   @impl true
   def start(_type, _args) do
+    total_concurrency = Application.get_env(:rinha_vanilla, :total_concurrency, 500)
+
     children = [
       {Redix, name: RinhaVanilla.Redis},
-      {Finch, name: RinhaVanilla.Finch},
+      {Finch,
+       name: RinhaVanilla.Finch, pools: %{:default => [size: total_concurrency, count: 1]}},
       RinhaVanilla.Health.LeaderElector,
       RinhaVanilla.Payments.StandardPayment.Pipeline,
       RinhaVanilla.Stats.ThresholdManager,

@@ -22,7 +22,7 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
       ],
       processors: [
         default: [
-          concurrency: 2
+          concurrency: 150
         ]
       ]
     )
@@ -68,7 +68,6 @@ defmodule RinhaVanilla.Payments.StandardPayment.Pipeline do
           _ -> false
         end
       end)
-
 
     unless Enum.empty?(messages_to_requeue) do
       score_payloads =

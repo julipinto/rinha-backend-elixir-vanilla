@@ -1,0 +1,20 @@
+# .dockerignore
+
+# Arquivos de build
+/_build
+/deps
+
+# Logs
+/logs
+
+# Arquivos do S.O.
+.DS_Store
+Thumbs.db
+
+# Arquivos do Git
+.git
+.gitignore
+
+# Configurações de IDE
+.idea
+.vscode
